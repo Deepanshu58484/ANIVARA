@@ -11,7 +11,7 @@ Watch your favorite anime episodes directly in your browser!
 -  Easy to use interface
 
 ## Admin Panel
-- Password: `admin123`
+- Password: `deepak@#509`
 - Add new anime with YouTube video IDs
 - Delete existing anime
 
