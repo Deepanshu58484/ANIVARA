@@ -312,59 +312,97 @@ function closePlayer() {
 }
 
 // ============================================
-// 🔥 LOAD HOME PAGE
+// 🔥 OPTIMIZED LOAD HOME - FAST LOADING
 // ============================================
 async function loadHome() {
     const trending = document.getElementById('trendingGrid');
     const popular = document.getElementById('animeGrid');
     
+    // Show loading messages
     trending.innerHTML = '<p style="grid-column:1/-1; text-align:center;">Loading trending anime...</p>';
     popular.innerHTML = '<p style="grid-column:1/-1; text-align:center;">Loading popular anime...</p>';
     
-    const searches = ['naruto', 'one piece', 'demon slayer', 'attack on titan', 'jujutsu kaisen'];
-    const results = [];
-    
-    for (const search of searches) {
-        const result = await animeAPI.fetchWithFallback('search', { query: search });
-        if (result.success && result.data) {
-            const items = result.data.results || result.data.animes || result.data || [];
-            results.push(...items.slice(0, 2));
+    try {
+        // Try just 2 APIs first (faster)
+        const apisToTry = ['naruto', 'one piece'];
+        let results = [];
+        
+        for (const search of apisToTry) {
+            try {
+                const result = await animeAPI.fetchWithFallback('search', { query: search });
+                if (result.success && result.data) {
+                    const items = result.data.results || result.data.animes || result.data || [];
+                    results.push(...items.slice(0, 3));
+                }
+            } catch (e) {
+                console.log(`${search} failed, continuing...`);
+            }
         }
+        
+        // If no results from APIs, show sample data instantly
+        if (results.length === 0) {
+            showSampleData();
+            return;
+        }
+        
+        // Remove duplicates
+        const uniqueResults = [...new Map(results.map(item => [item.id, item])).values()];
+        
+        trending.innerHTML = '';
+        popular.innerHTML = '';
+        
+        uniqueResults.slice(0, 6).forEach(anime => {
+            trending.appendChild(createAnimeCard(anime));
+        });
+        
+        uniqueResults.slice(6, 12).forEach(anime => {
+            popular.appendChild(createAnimeCard(anime));
+        });
+        
+    } catch (error) {
+        console.error('Load failed, showing sample data:', error);
+        showSampleData();
     }
+}
+
+// ============================================
+// 🔥 SAMPLE DATA - SHOWS INSTANTLY
+// ============================================
+function showSampleData() {
+    const trending = document.getElementById('trendingGrid');
+    const popular = document.getElementById('animeGrid');
+    
+    const sampleAnime = [
+        { 
+            title: 'Naruto', 
+            image: 'https://cdn.myanimelist.net/images/anime/13/17405.jpg',
+            id: 'naruto' 
+        },
+        { 
+            title: 'One Piece', 
+            image: 'https://cdn.myanimelist.net/images/anime/6/73245.jpg',
+            id: 'one-piece' 
+        },
+        { 
+            title: 'Demon Slayer', 
+            image: 'https://cdn.myanimelist.net/images/anime/1286/99889.jpg',
+            id: 'demon-slayer' 
+        },
+        { 
+            title: 'Attack on Titan', 
+            image: 'https://cdn.myanimelist.net/images/anime/10/47347.jpg',
+            id: 'aot' 
+        }
+    ];
     
     trending.innerHTML = '';
     popular.innerHTML = '';
     
-    const uniqueResults = [...new Map(results.map(item => [item.id, item])).values()];
-    
-    uniqueResults.slice(0, 10).forEach(anime => {
+    sampleAnime.forEach(anime => {
         const card = createAnimeCard(anime);
-        trending.appendChild(card);
+        trending.appendChild(card.cloneNode(true));
+        popular.appendChild(card.cloneNode(true));
     });
-    
-    uniqueResults.slice(10, 20).forEach(anime => {
-        const card = createAnimeCard(anime);
-        popular.appendChild(card);
-    });
-}
-
-function createAnimeCard(anime) {
-    const card = document.createElement('div');
-    card.className = 'anime-card';
-    
-    const title = anime.title?.english || anime.title?.romaji || anime.title || 'Unknown';
-    const image = anime.image || anime.poster || anime.cover || 'https://via.placeholder.com/300x450';
-    const id = anime.id || anime.animeId;
-    
-    card.innerHTML = `
-        <img src="${image}" alt="${title}">
-        <div class="anime-card-content">
-            <div class="anime-title">${title}</div>
-        </div>
-    `;
-    
-    card.onclick = () => showAnimeDetails(id, title);
-    return card;
 }
 
 // ============================================
