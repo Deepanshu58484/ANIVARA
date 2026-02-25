@@ -47,3 +47,427 @@
         .hide { display: none !important; }
     </style>
 </head>
+
+    <body>
+<!-- Video Player -->
+<div class="player-overlay" id="playerOverlay">
+    <div class="player-header">
+        <h3 id="playerTitle">Now Playing</h3>
+        <button class="close-btn" onclick="closePlayer()">Close</button>
+    </div>
+    <div id="youtube-player"></div>
+</div>
+
+<!-- Top Navbar -->
+<div class="navbar">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div class="logo" onclick="showHome()">🎬 AnimeStream</div>
+    </div>
+</div>
+
+<!-- Search Box -->
+<div class="search-container">
+    <div class="search-box">
+        <i class="fas fa-search"></i>
+        <input type="text" id="searchInput" placeholder="Search anime..." onkeyup="searchAnime(this.value)">
+    </div>
+</div>
+
+<!-- Main Content -->
+<div id="mainContent">
+    <!-- Home Section -->
+    <div id="homeSection">
+        <div style="padding: 0 15px;">
+            <h2 style="font-size: 20px; margin: 10px 0;">🔥 All Anime</h2>
+            <div id="animeGrid" class="anime-grid" style="padding: 0 0 70px 0;"></div>
+        </div>
+    </div>
+
+    <!-- Search Section -->
+    <div id="searchSection" class="hide">
+        <div style="padding: 0 15px 70px 15px;">
+            <h2 style="font-size: 20px; margin-bottom: 15px;">🔍 Search Results</h2>
+            <div id="searchGrid" class="anime-grid" style="padding: 0;"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Bottom Navigation -->
+<div class="bottom-nav">
+    <div class="nav-item active" onclick="showHome()">
+        <i class="fas fa-home"></i><span>Home</span>
+    </div>
+    <div class="nav-item" onclick="showSearch()">
+        <i class="fas fa-search"></i><span>Search</span>
+    </div>
+</div>
+
+        <script>
+// ============================================
+// 🔥 10 APIs BACKUP SYSTEM - कोई नहीं बंद होगा
+// ============================================
+
+// YouTube API (तेरी अपनी)
+const YOUTUBE_API_KEY = 'AIzaSyBFcjcu0_89rLDOqeotRpPmiYlWAty_RPM';
+
+// API सोर्सेस (10 अलग-अलग)
+const API_SOURCES = [
+    {
+        name: 'YouTube',
+        search: async (query) => {
+            const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${query} anime episode 1&type=video&key=${YOUTUBE_API_KEY}`;
+            const res = await fetch(url);
+            const data = await res.json();
+            return data.items?.map(item => ({
+                title: item.snippet.title,
+                image: item.snippet.thumbnails.high.url,
+                videoId: item.id.videoId,
+                api: 'YouTube'
+            })) || [];
+        },
+        priority: 1
+    },
+    {
+        name: 'Consumet Gogo',
+        search: async (query) => {
+            try {
+                const url = `https://api.consumet.org/anime/gogoanime/${query}`;
+                const res = await fetch(url);
+                const data = await res.json();
+                return data.results?.map(item => ({
+                    title: item.title,
+                    image: item.image,
+                    id: item.id,
+                    api: 'GogoAnime'
+                })) || [];
+            } catch { return []; }
+        },
+        priority: 2
+    },
+    {
+        name: 'Consumet Zoro',
+        search: async (query) => {
+            try {
+                const url = `https://api.consumet.org/anime/zoro/${query}?page=1`;
+                const res = await fetch(url);
+                const data = await res.json();
+                return data.results?.map(item => ({
+                    title: item.title,
+                    image: item.image,
+                    id: item.id,
+                    api: 'Zoro'
+                })) || [];
+            } catch { return []; }
+        },
+        priority: 3
+    },
+    {
+        name: 'AniWatch',
+        search: async (query) => {
+            try {
+                const url = `https://aniwatch-api-iy4s.onrender.com/api/search?keyword=${query}`;
+                const res = await fetch(url);
+                const data = await res.json();
+                return data.animes?.map(item => ({
+                    title: item.name,
+                    image: item.poster,
+                    id: item.id,
+                    api: 'AniWatch'
+                })) || [];
+            } catch { return []; }
+        },
+        priority: 4
+    },
+    {
+        name: 'AMVStrøm',
+        search: async (query) => {
+            try {
+                const url = `https://api.amvstr.ml/api/v2/search?q=${query}`;
+                const res = await fetch(url);
+                const data = await res.json();
+                return data.results?.map(item => ({
+                    title: item.title,
+                    image: item.image,
+                    id: item.id,
+                    api: 'AMVStrøm'
+                })) || [];
+            } catch { return []; }
+        },
+        priority: 5
+    },
+    {
+        name: 'Kuroji',
+        search: async (query) => {
+            try {
+                const url = `https://kuroji-api.vercel.app/search/${query}`;
+                const res = await fetch(url);
+                const data = await res.json();
+                return data.results?.map(item => ({
+                    title: item.title,
+                    image: item.image,
+                    id: item.id,
+                    api: 'Kuroji'
+                })) || [];
+            } catch { return []; }
+        },
+        priority: 6
+    },
+    {
+        name: 'Zenime',
+        search: async (query) => {
+            try {
+                const url = `https://zenime-api.vercel.app/api/search?q=${query}`;
+                const res = await fetch(url);
+                const data = await res.json();
+                return data.results?.map(item => ({
+                    title: item.title,
+                    image: item.image,
+                    id: item.id,
+                    api: 'Zenime'
+                })) || [];
+            } catch { return []; }
+        },
+        priority: 7
+    },
+    {
+        name: 'Anify',
+        search: async (query) => {
+            try {
+                const url = `https://api.anify.tv/search/anime/${query}`;
+                const res = await fetch(url);
+                const data = await res.json();
+                return data.map(item => ({
+                    title: item.title,
+                    image: item.coverImage,
+                    id: item.id,
+                    api: 'Anify'
+                })) || [];
+            } catch { return []; }
+        },
+        priority: 8
+    },
+    {
+        name: 'Jikan (MAL)',
+        search: async (query) => {
+            try {
+                const url = `https://api.jikan.moe/v4/anime?q=${query}&limit=10`;
+                const res = await fetch(url);
+                const data = await res.json();
+                return data.data?.map(item => ({
+                    title: item.title,
+                    image: item.images.jpg.image_url,
+                    id: item.mal_id,
+                    api: 'MyAnimeList'
+                })) || [];
+            } catch { return []; }
+        },
+        priority: 9
+    },
+    {
+        name: 'Kitsu',
+        search: async (query) => {
+            try {
+                const url = `https://kitsu.io/api/edge/anime?filter[text]=${query}`;
+                const res = await fetch(url);
+                const data = await res.json();
+                return data.data?.map(item => ({
+                    title: item.attributes.titles.en || item.attributes.canonicalTitle,
+                    image: item.attributes.posterImage?.original,
+                    id: item.id,
+                    api: 'Kitsu'
+                })) || [];
+            } catch { return []; }
+        },
+        priority: 10
+    }
+];
+
+// ============================================
+// 🔥 API MANAGER - खुद API select करेगा
+// ============================================
+class AnimeAPI {
+    constructor() {
+        this.apis = API_SOURCES.sort((a, b) => a.priority - b.priority);
+        this.workingApi = null;
+    }
+
+    async searchWithBackup(query) {
+        // पहले sample data में देखो (fastest)
+        const sampleResult = this.searchSampleData(query);
+        if (sampleResult.length > 0) {
+            return { success: true, data: sampleResult, api: 'Sample Data' };
+        }
+
+        // APIs try करो
+        for (const api of this.apis) {
+            try {
+                console.log(`Trying ${api.name}...`);
+                const results = await api.search(query);
+                
+                if (results && results.length > 0) {
+                    console.log(`✅ ${api.name} working!`);
+                    this.workingApi = api.name;
+                    return { success: true, data: results, api: api.name };
+                }
+            } catch (e) {
+                console.log(`❌ ${api.name} failed`);
+            }
+            
+            // थोड़ा wait करो (rate limit से बचने के लिए)
+            await new Promise(r => setTimeout(r, 500));
+        }
+        
+        // कोई API नहीं चली तो sample data दिखाओ
+        return { 
+            success: true, 
+            data: this.getAllSampleData(), 
+            api: 'Sample Data (Backup)' 
+        };
+    }
+
+    searchSampleData(query) {
+        const sample = [
+            { title: 'Naruto', image: 'https://cdn.myanimelist.net/images/anime/13/17405.jpg', id: 'naruto' },
+            { title: 'One Piece', image: 'https://cdn.myanimelist.net/images/anime/6/73245.jpg', id: 'one-piece' },
+            { title: 'Demon Slayer', image: 'https://cdn.myanimelist.net/images/anime/1286/99889.jpg', id: 'demon-slayer' }
+        ];
+        return sample.filter(item => 
+            item.title.toLowerCase().includes(query.toLowerCase())
+        );
+    }
+
+    getAllSampleData() {
+        return [
+            { title: 'Naruto', image: 'https://cdn.myanimelist.net/images/anime/13/17405.jpg', id: 'naruto' },
+            { title: 'One Piece', image: 'https://cdn.myanimelist.net/images/anime/6/73245.jpg', id: 'one-piece' },
+            { title: 'Demon Slayer', image: 'https://cdn.myanimelist.net/images/anime/1286/99889.jpg', id: 'demon-slayer' },
+            { title: 'Attack on Titan', image: 'https://cdn.myanimelist.net/images/anime/10/47347.jpg', id: 'aot' }
+        ];
+    }
+}
+
+const animeAPI = new AnimeAPI();
+
+// ============================================
+// 🔥 SEARCH FUNCTION (अब 10 APIs से search)
+// ============================================
+async function searchAnime(query) {
+    if (query.length < 2) return;
+    
+    document.getElementById('loading').classList.remove('hide');
+    
+    const result = await animeAPI.searchWithBackup(query);
+    
+    const grid = document.getElementById('searchGrid');
+    grid.innerHTML = '';
+    
+    result.data.forEach(anime => {
+        const card = createAnimeCard(anime, result.api);
+        grid.appendChild(card);
+    });
+    
+    // Show which API is working
+    document.getElementById('apiStatus').innerHTML = `API: ${result.api}`;
+    
+    document.getElementById('loading').classList.add('hide');
+    showSearch();
+}
+
+function createAnimeCard(anime, apiName) {
+    const card = document.createElement('div');
+    card.className = 'anime-card';
+    card.innerHTML = `
+        <img src="${anime.image}" alt="${anime.title}">
+        <div class="anime-card-content">
+            <div class="anime-title">${anime.title}</div>
+            <div style="color: #aaa; font-size: 10px;">via ${apiName || 'API'}</div>
+        </div>
+    `;
+    card.onclick = () => playAnime(anime);
+    return card;
+}
+
+// ============================================
+// 🔥 SAMPLE DATA (हमेशा काम करेगा)
+// ============================================
+const sampleAnime = [
+    { title: 'Naruto', image: 'https://cdn.myanimelist.net/images/anime/13/17405.jpg', videoId: 'RgKAFK5djSk' },
+    { title: 'One Piece', image: 'https://cdn.myanimelist.net/images/anime/6/73245.jpg', videoId: 'S8_YwFLCh4U' },
+    { title: 'Demon Slayer', image: 'https://cdn.myanimelist.net/images/anime/1286/99889.jpg', videoId: 'VQGCKyvzIM4' },
+    { title: 'Attack on Titan', image: 'https://cdn.myanimelist.net/images/anime/10/47347.jpg', videoId: 'MGRm4IzK1SQ' }
+];
+
+// ============================================
+// 🔥 YOUTUBE PLAYER (Final fallback)
+// ============================================
+let ytPlayer = null;
+
+function playAnime(anime) {
+    if (anime.videoId) {
+        playVideo(anime.videoId, anime.title);
+    } else {
+        // Try to get from YouTube API
+        searchYouTubeAndPlay(anime.title);
+    }
+}
+
+async function searchYouTubeAndPlay(title) {
+    const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${title} episode 1&type=video&key=${YOUTUBE_API_KEY}`;
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data.items?.[0]) {
+        playVideo(data.items[0].id.videoId, title);
+    }
+}
+
+function playVideo(videoId, title) {
+    document.getElementById('playerOverlay').style.display = 'flex';
+    document.getElementById('playerTitle').textContent = title;
+    
+    if (ytPlayer) {
+        ytPlayer.loadVideoById(videoId);
+    } else {
+        ytPlayer = new YT.Player('youtube-player', {
+            videoId: videoId,
+            width: '100%', height: '100%',
+            playerVars: { autoplay: 1, controls: 1 }
+        });
+    }
+}
+
+function closePlayer() {
+    document.getElementById('playerOverlay').style.display = 'none';
+    if (ytPlayer) ytPlayer.stopVideo();
+}
+
+// ============================================
+// 🔥 NAVIGATION
+// ============================================
+function showHome() {
+    document.getElementById('homeSection').classList.remove('hide');
+    document.getElementById('searchSection').classList.add('hide');
+    displaySampleAnime();
+}
+
+function showSearch() {
+    document.getElementById('homeSection').classList.add('hide');
+    document.getElementById('searchSection').classList.remove('hide');
+}
+
+function displaySampleAnime() {
+    const grid = document.getElementById('animeGrid');
+    grid.innerHTML = '';
+    sampleAnime.forEach(anime => {
+        const card = createAnimeCard(anime, 'Sample');
+        grid.appendChild(card);
+    });
+}
+
+// ============================================
+// 🔥 INIT
+// ============================================
+window.onload = () => {
+    showHome();
+    displaySampleAnime();
+};
+        </script>
